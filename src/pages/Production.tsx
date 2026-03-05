@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { generateHistoricalData } from "@/lib/mockData";
+import { PageHeader, PeriodSelector, ChartCard, TOOLTIP_STYLE, AXIS_TICK, GRID_STROKE, COLORS } from "@/components/shared";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -19,115 +19,70 @@ const Production = () => {
     balance: Number((d.productionVoltage * d.productionCurrent - d.consumptionVoltage * d.consumptionCurrent).toFixed(1)),
   }));
 
-  const tooltipStyle = {
-    backgroundColor: 'hsl(220, 18%, 10%)',
-    border: '1px solid hsl(220, 14%, 18%)',
-    borderRadius: '8px',
-    color: 'hsl(40, 20%, 92%)',
-  };
-
-  const periods = [
-    { value: 12 as const, label: '12h' },
-    { value: 24 as const, label: '24h' },
-    { value: 48 as const, label: '48h' },
-  ];
+  const axisProps = { tick: AXIS_TICK, tickLine: false, axisLine: false } as const;
 
   return (
     <div className="space-y-8">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold text-foreground">Production & Consommation</h1>
-        <p className="mt-1 text-muted-foreground">Analyse détaillée de la production et consommation électrique</p>
-      </motion.div>
+      <PageHeader title="Production & Consommation" subtitle="Analyse détaillée de la production et consommation électrique" />
+      <PeriodSelector period={period} onChange={setPeriod} />
 
-      {/* Period selector */}
-      <div className="flex gap-2">
-        {periods.map(p => (
-          <button
-            key={p.value}
-            onClick={() => setPeriod(p.value)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-              period === p.value
-                ? 'gradient-solar text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Power Chart */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Puissance (W)</h2>
+      <ChartCard title="Puissance (W)" delay={0.1}>
         <ResponsiveContainer width="100%" height={350}>
           <AreaChart data={data}>
             <defs>
               <linearGradient id="gProd" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(36, 95%, 55%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(36, 95%, 55%)" stopOpacity={0} />
+                <stop offset="5%" stopColor={COLORS.production} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={COLORS.production} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gCons" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0} />
+                <stop offset="5%" stopColor={COLORS.consumption} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={COLORS.consumption} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 18%)" />
-            <XAxis dataKey="time" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} unit="W" />
-            <Tooltip contentStyle={tooltipStyle} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+            <XAxis dataKey="time" {...axisProps} />
+            <YAxis {...axisProps} unit="W" />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
             <Legend />
-            <Area type="monotone" dataKey="power" stroke="hsl(36, 95%, 55%)" fill="url(#gProd)" strokeWidth={2} name="Production" />
-            <Area type="monotone" dataKey="consPower" stroke="hsl(0, 72%, 51%)" fill="url(#gCons)" strokeWidth={2} name="Consommation" />
+            <Area type="monotone" dataKey="power" stroke={COLORS.production} fill="url(#gProd)" strokeWidth={2} name="Production" />
+            <Area type="monotone" dataKey="consPower" stroke={COLORS.consumption} fill="url(#gCons)" strokeWidth={2} name="Consommation" />
           </AreaChart>
         </ResponsiveContainer>
-      </motion.div>
+      </ChartCard>
 
-      {/* Voltage & Current */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-6">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Tension (V)</h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 18%)" />
-              <XAxis dataKey="time" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} domain={[10, 15]} unit="V" />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend />
-              <Line type="monotone" dataKey="voltage" stroke="hsl(36, 95%, 55%)" strokeWidth={2} dot={false} name="Prod." />
-              <Line type="monotone" dataKey="consVoltage" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={false} name="Cons." />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-xl border border-border bg-card p-6">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Courant (A)</h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 18%)" />
-              <XAxis dataKey="time" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} unit="A" />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend />
-              <Line type="monotone" dataKey="current" stroke="hsl(36, 95%, 55%)" strokeWidth={2} dot={false} name="Prod." />
-              <Line type="monotone" dataKey="consCurrent" stroke="hsl(0, 72%, 51%)" strokeWidth={2} dot={false} name="Cons." />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
+        {[
+          { title: "Tension (V)", keys: [{ k: "voltage", n: "Prod." }, { k: "consVoltage", n: "Cons." }], domain: [10, 15], unit: "V", delay: 0.2 },
+          { title: "Courant (A)", keys: [{ k: "current", n: "Prod." }, { k: "consCurrent", n: "Cons." }], unit: "A", delay: 0.25 },
+        ].map(chart => (
+          <ChartCard key={chart.title} title={chart.title} delay={chart.delay}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="time" {...axisProps} />
+                <YAxis {...axisProps} domain={chart.domain as any} unit={chart.unit} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend />
+                {chart.keys.map((line, i) => (
+                  <Line key={line.k} type="monotone" dataKey={line.k} stroke={i === 0 ? COLORS.production : COLORS.consumption} strokeWidth={2} dot={false} name={line.n} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        ))}
       </div>
 
-      {/* Balance */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card p-6">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Bilan Énergétique (W)</h2>
+      <ChartCard title="Bilan Énergétique (W)" delay={0.3}>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 18%)" />
-            <XAxis dataKey="time" tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: 'hsl(220, 10%, 55%)', fontSize: 11 }} tickLine={false} axisLine={false} unit="W" />
-            <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="balance" name="Bilan" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+            <XAxis dataKey="time" {...axisProps} />
+            <YAxis {...axisProps} unit="W" />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <Bar dataKey="balance" name="Bilan" fill={COLORS.co2} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </motion.div>
+      </ChartCard>
     </div>
   );
 };
