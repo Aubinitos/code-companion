@@ -13,73 +13,63 @@ const Production = () => {
     voltage: d.productionVoltage,
     current: d.productionCurrent,
     power: Number((d.productionVoltage * d.productionCurrent).toFixed(1)),
-    consVoltage: d.consumptionVoltage,
-    consCurrent: d.consumptionCurrent,
     consPower: Number((d.consumptionVoltage * d.consumptionCurrent).toFixed(1)),
     balance: Number((d.productionVoltage * d.productionCurrent - d.consumptionVoltage * d.consumptionCurrent).toFixed(1)),
   }));
 
-  const axisProps = { tick: AXIS_TICK, tickLine: false, axisLine: false } as const;
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader title="Production & Consommation" subtitle="Analyse détaillée de la production et consommation électrique" />
       <PeriodSelector period={period} onChange={setPeriod} />
 
-      <ChartCard title="Puissance (W)" delay={0.1}>
-        <ResponsiveContainer width="100%" height={350}>
+      <ChartCard title="Puissance (W)">
+        <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={data}>
-            <defs>
-              <linearGradient id="gProd" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.production} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={COLORS.production} stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gCons" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={COLORS.consumption} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={COLORS.consumption} stopOpacity={0} />
-              </linearGradient>
-            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="time" {...axisProps} />
-            <YAxis {...axisProps} unit="W" />
+            <XAxis dataKey="time" tick={AXIS_TICK} />
+            <YAxis tick={AXIS_TICK} unit="W" />
             <Tooltip contentStyle={TOOLTIP_STYLE} />
             <Legend />
-            <Area type="monotone" dataKey="power" stroke={COLORS.production} fill="url(#gProd)" strokeWidth={2} name="Production" />
-            <Area type="monotone" dataKey="consPower" stroke={COLORS.consumption} fill="url(#gCons)" strokeWidth={2} name="Consommation" />
+            <Area type="monotone" dataKey="power" stroke={COLORS.production} fill={COLORS.production} fillOpacity={0.2} strokeWidth={2} name="Production" />
+            <Area type="monotone" dataKey="consPower" stroke={COLORS.consumption} fill={COLORS.consumption} fillOpacity={0.2} strokeWidth={2} name="Consommation" />
           </AreaChart>
         </ResponsiveContainer>
       </ChartCard>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {[
-          { title: "Tension (V)", keys: [{ k: "voltage", n: "Prod." }, { k: "consVoltage", n: "Cons." }], domain: [10, 15], unit: "V", delay: 0.2 },
-          { title: "Courant (A)", keys: [{ k: "current", n: "Prod." }, { k: "consCurrent", n: "Cons." }], unit: "A", delay: 0.25 },
-        ].map(chart => (
-          <ChartCard key={chart.title} title={chart.title} delay={chart.delay}>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-                <XAxis dataKey="time" {...axisProps} />
-                <YAxis {...axisProps} domain={chart.domain as any} unit={chart.unit} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend />
-                {chart.keys.map((line, i) => (
-                  <Line key={line.k} type="monotone" dataKey={line.k} stroke={i === 0 ? COLORS.production : COLORS.consumption} strokeWidth={2} dot={false} name={line.n} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        ))}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <ChartCard title="Tension (V)">
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+              <XAxis dataKey="time" tick={AXIS_TICK} />
+              <YAxis tick={AXIS_TICK} domain={[10, 15]} unit="V" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Line type="monotone" dataKey="voltage" stroke={COLORS.production} strokeWidth={2} dot={false} name="Tension" />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Courant (A)">
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+              <XAxis dataKey="time" tick={AXIS_TICK} />
+              <YAxis tick={AXIS_TICK} unit="A" />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              <Line type="monotone" dataKey="current" stroke={COLORS.production} strokeWidth={2} dot={false} name="Courant" />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
 
-      <ChartCard title="Bilan Énergétique (W)" delay={0.3}>
-        <ResponsiveContainer width="100%" height={280}>
+      <ChartCard title="Bilan Énergétique (W)">
+        <ResponsiveContainer width="100%" height={250}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="time" {...axisProps} />
-            <YAxis {...axisProps} unit="W" />
+            <XAxis dataKey="time" tick={AXIS_TICK} />
+            <YAxis tick={AXIS_TICK} unit="W" />
             <Tooltip contentStyle={TOOLTIP_STYLE} />
-            <Bar dataKey="balance" name="Bilan" fill={COLORS.co2} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="balance" name="Bilan" fill={COLORS.co2} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
