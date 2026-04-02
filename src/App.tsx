@@ -1,59 +1,88 @@
 import { useState, useEffect } from "react";
-import { generateCurrentReadings, generateHistoricalData, getSystemStatus } from "@/lib/mockData";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const tabs = ["Accueil", "Production", "Pollution", "Pilotage", "Export"];
+// --- Données simulées ---
+function rand(min: number, max: number, dec = 2) {
+  return Number((Math.random() * (max - min) + min).toFixed(dec));
+}
 
-const PeriodButtons = ({ period, setPeriod }: { period: number; setPeriod: (p: number) => void }) => (
-  <div className="mb-4 flex gap-2">
-    {[12, 24, 48].map(p => (
-      <button key={p} onClick={() => setPeriod(p)}
-        className={`border px-3 py-1 text-sm ${period === p ? "bg-blue-600 text-white" : ""}`}>
-        {p}h
-      </button>
-    ))}
-  </div>
-);
+function genReadings() {
+  return {
+    productionVoltage: rand(11.5, 14.2),
+    productionCurrent: rand(0.8, 3.5),
+    consumptionVoltage: rand(11.8, 12.6),
+    consumptionCurrent: rand(0.3, 1.2),
+    co2: rand(350, 600, 0),
+    microparticles: rand(5, 80, 0),
+  };
+}
+
+function genHistory(hours: number) {
+  const data: any[] = [];
+  const now = Date.now();
+  for (let i = hours * 60; i >= 0; i -= 15) {
+    const t = new Date(now - i * 60000);
+    const h = t.getHours();
+    const solar = h >= 6 && h <= 20 ? Math.sin(((h - 6) / 14) * Math.PI) : 0;
+    data.push({
+      time: t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      pV: Number((11 + solar * 3.2 + Math.random() * 0.3).toFixed(2)),
+      pA: Number((solar * 3.2 + Math.random() * 0.2).toFixed(2)),
+      cV: Number((11.8 + Math.random() * 0.8).toFixed(2)),
+      cA: Number((0.3 + Math.random() * 0.9).toFixed(2)),
+      co2: Math.round(380 + Math.random() * 180),
+      pm: Math.round(10 + Math.random() * 50),
+    });
+  }
+  return data;
+}
+
+// --- Application ---
+const tabs = ["Accueil", "Production", "Pollution", "Pilotage", "Export"];
 
 const App = () => {
   const [tab, setTab] = useState("Accueil");
-  const [r, setR] = useState(generateCurrentReadings());
+  const [r, setR] = useState(genReadings());
   const [period, setPeriod] = useState(24);
   const [mode, setMode] = useState("auto");
   const [pan, setPan] = useState(90);
   const [tilt, setTilt] = useState(45);
-  const status = getSystemStatus();
 
   useEffect(() => {
-    const id = setInterval(() => setR(generateCurrentReadings()), 5000);
+    const id = setInterval(() => setR(genReadings()), 5000);
     return () => clearInterval(id);
   }, []);
 
-  const histData = generateHistoricalData(period);
-  const chartData = histData.map(d => ({
-    time: new Date(d.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-    production: Number((d.productionVoltage * d.productionCurrent).toFixed(1)),
-    consommation: Number((d.consumptionVoltage * d.consumptionCurrent).toFixed(1)),
-    co2: d.co2,
-    particules: d.microparticles,
+  const hist = genHistory(period);
+  const chartData = hist.map(d => ({
+    ...d,
+    production: Number((d.pV * d.pA).toFixed(1)),
+    consommation: Number((d.cV * d.cA).toFixed(1)),
   }));
 
-  const doExport = (format: string) => {
-    const data = generateHistoricalData(period);
-    if (format === "csv") {
+  const PB = () => (
+    <div className="mb-4 flex gap-2">
+      {[12, 24, 48].map(p => (
+        <button key={p} onClick={() => setPeriod(p)}
+          className={`border px-3 py-1 text-sm ${period === p ? "bg-blue-600 text-white" : ""}`}>{p}h</button>
+      ))}
+    </div>
+  );
+
+  const doExport = (fmt: string) => {
+    const d = genHistory(period);
+    if (fmt === "csv") {
       const csv = "Heure,V Prod,A Prod,V Cons,A Cons,CO2,PM\n" +
-        data.map(d => `${d.timestamp},${d.productionVoltage},${d.productionCurrent},${d.consumptionVoltage},${d.consumptionCurrent},${d.co2},${d.microparticles}`).join("\n");
+        d.map(r => `${r.time},${r.pV},${r.pA},${r.cV},${r.cA},${r.co2},${r.pm}`).join("\n");
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-      a.download = `donnees_${period}h.csv`;
-      a.click();
-    } else if (format === "json") {
+      a.download = `donnees_${period}h.csv`; a.click();
+    } else if (fmt === "json") {
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-      a.download = `donnees_${period}h.json`;
-      a.click();
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }));
+      a.download = `donnees_${period}h.json`; a.click();
     } else {
       const doc = new jsPDF();
       doc.text("Track My Sun - Rapport", 14, 20);
@@ -61,12 +90,8 @@ const App = () => {
       doc.text(`Période : ${period}h`, 14, 28);
       autoTable(doc, {
         head: [["Heure", "V Prod", "A Prod", "V Cons", "A Cons", "CO₂", "PM"]],
-        body: data.map(d => [
-          new Date(d.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-          d.productionVoltage, d.productionCurrent, d.consumptionVoltage, d.consumptionCurrent, d.co2, d.microparticles
-        ]),
-        startY: 34,
-        styles: { fontSize: 7 },
+        body: d.map(r => [r.time, r.pV, r.pA, r.cV, r.cA, r.co2, r.pm]),
+        startY: 34, styles: { fontSize: 7 },
       });
       doc.save(`donnees_${period}h.pdf`);
     }
@@ -79,9 +104,7 @@ const App = () => {
         <nav className="mt-2 flex gap-4">
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={tab === t ? "font-bold text-blue-600" : "text-gray-600 hover:underline"}>
-              {t}
-            </button>
+              className={tab === t ? "font-bold text-blue-600" : "text-gray-600 hover:underline"}>{t}</button>
           ))}
         </nav>
       </header>
@@ -90,7 +113,6 @@ const App = () => {
         {tab === "Accueil" && (
           <div>
             <h2 className="text-lg font-bold mb-4">Tableau de bord</h2>
-            <p className="mb-4 text-sm text-gray-500">Dernière mesure : {status.lastAcquisition} | Mode : {status.mode} | Batterie : {status.batteryLevel}%</p>
             <table className="w-full border text-sm">
               <thead><tr className="bg-gray-100"><th className="border p-2 text-left">Mesure</th><th className="border p-2 text-left">Valeur</th></tr></thead>
               <tbody>
@@ -101,7 +123,6 @@ const App = () => {
                 <tr><td className="border p-2">Courant consommation</td><td className="border p-2">{r.consumptionCurrent} A</td></tr>
                 <tr><td className="border p-2">CO₂</td><td className="border p-2">{r.co2} ppm</td></tr>
                 <tr><td className="border p-2">Microparticules</td><td className="border p-2">{r.microparticles} µg/m³</td></tr>
-                <tr><td className="border p-2">Orientation panneau</td><td className="border p-2">Pan {status.panAngle}° / Tilt {status.tiltAngle}°</td></tr>
               </tbody>
             </table>
           </div>
@@ -110,12 +131,12 @@ const App = () => {
         {tab === "Production" && (
           <div>
             <h2 className="text-lg font-bold mb-2">Production & Consommation</h2>
-            <PeriodButtons period={period} setPeriod={setPeriod} />
+            <PB />
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="time" fontSize={10} /><YAxis fontSize={10} /><Tooltip />
-                <Line type="monotone" dataKey="production" stroke="orange" dot={false} name="Production" />
-                <Line type="monotone" dataKey="consommation" stroke="red" dot={false} name="Consommation" />
+                <Line type="monotone" dataKey="production" stroke="orange" dot={false} />
+                <Line type="monotone" dataKey="consommation" stroke="red" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -124,7 +145,7 @@ const App = () => {
         {tab === "Pollution" && (
           <div>
             <h2 className="text-lg font-bold mb-2">Qualité de l'air</h2>
-            <PeriodButtons period={period} setPeriod={setPeriod} />
+            <PB />
             <h3 className="font-semibold mb-1">CO₂ (ppm)</h3>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
@@ -136,7 +157,7 @@ const App = () => {
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="time" fontSize={10} /><YAxis fontSize={10} /><Tooltip />
-                <Line type="monotone" dataKey="particules" stroke="steelblue" dot={false} />
+                <Line type="monotone" dataKey="pm" stroke="steelblue" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -154,7 +175,7 @@ const App = () => {
                 </label>
               ))}
             </div>
-            <p>Orientation (Pan) : {pan}° | Inclinaison (Tilt) : {tilt}°</p>
+            <p>Pan : {pan}° | Tilt : {tilt}°</p>
             {mode !== "auto" && (
               <div className="mt-2 flex gap-2">
                 <button onClick={() => setTilt(t => Math.min(t + 5, 90))} className="border px-3 py-1">↑</button>
@@ -170,7 +191,7 @@ const App = () => {
         {tab === "Export" && (
           <div>
             <h2 className="text-lg font-bold mb-4">Export des données</h2>
-            <PeriodButtons period={period} setPeriod={setPeriod} />
+            <PB />
             <div className="flex gap-4">
               <button onClick={() => doExport("pdf")} className="border px-4 py-2 hover:bg-gray-100">PDF</button>
               <button onClick={() => doExport("csv")} className="border px-4 py-2 hover:bg-gray-100">CSV</button>
