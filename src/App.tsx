@@ -147,9 +147,11 @@ const App = () => {
   if (!connecte) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <form onSubmit={seConnecter} className="bg-white border rounded p-6 w-full max-w-sm shadow">
+        <form onSubmit={modeInscription ? creerCompte : seConnecter} className="bg-white border rounded p-6 w-full max-w-sm shadow">
           <h1 className="text-xl font-bold mb-4 text-center">Track My Sun</h1>
-          <p className="text-sm text-gray-600 mb-4 text-center">Connexion requise</p>
+          <p className="text-sm text-gray-600 mb-4 text-center">
+            {modeInscription ? "Créer un compte" : "Connexion requise"}
+          </p>
           <label className="block text-sm mb-1">Identifiant</label>
           <input type="text" value={loginInput} onChange={e => setLoginInput(e.target.value)}
             className="border w-full p-2 mb-3 rounded" required autoFocus />
@@ -157,8 +159,14 @@ const App = () => {
           <input type="password" value={mdpInput} onChange={e => setMdpInput(e.target.value)}
             className="border w-full p-2 mb-3 rounded" required />
           {erreurLogin && <p className="text-red-600 text-sm mb-3">{erreurLogin}</p>}
+          {messageOk && <p className="text-green-600 text-sm mb-3">{messageOk}</p>}
           <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
-            Se connecter
+            {modeInscription ? "Créer le compte" : "Se connecter"}
+          </button>
+          <button type="button"
+            onClick={() => { setModeInscription(!modeInscription); setErreurLogin(""); setMessageOk(""); }}
+            className="w-full mt-3 text-sm text-blue-600 hover:underline">
+            {modeInscription ? "← Retour à la connexion" : "Créer un compte"}
           </button>
         </form>
       </div>
