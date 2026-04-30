@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Adresse du serveur où se trouve api.php
-const API = "http://172.16.10.15/api.php";
+const API = "/api.php";
 
 const tabs = ["Accueil", "Production", "Pollution", "Pilotage", "Export"];
 
