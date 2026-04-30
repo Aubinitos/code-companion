@@ -20,10 +20,13 @@ const App = () => {
   const [loginInput, setLoginInput] = useState("");
   const [mdpInput, setMdpInput] = useState("");
   const [erreurLogin, setErreurLogin] = useState("");
+  const [modeInscription, setModeInscription] = useState(false);
+  const [messageOk, setMessageOk] = useState("");
 
   const seConnecter = (e: React.FormEvent) => {
     e.preventDefault();
     setErreurLogin("");
+    setMessageOk("");
     fetch(`${API}?action=login&login=${encodeURIComponent(loginInput)}&mdp=${encodeURIComponent(mdpInput)}`)
       .then(res => res.json())
       .then(data => {
@@ -33,6 +36,28 @@ const App = () => {
           setConnecte(true);
         } else {
           setErreurLogin("Identifiant ou mot de passe incorrect");
+        }
+      })
+      .catch(() => setErreurLogin("Impossible de joindre le serveur"));
+  };
+
+  const creerCompte = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErreurLogin("");
+    setMessageOk("");
+    if (loginInput.length < 3 || mdpInput.length < 4) {
+      setErreurLogin("Identifiant (3+) et mot de passe (4+) requis");
+      return;
+    }
+    fetch(`${API}?action=inscription&login=${encodeURIComponent(loginInput)}&mdp=${encodeURIComponent(mdpInput)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.ok) {
+          setMessageOk("Compte créé. Vous pouvez vous connecter.");
+          setModeInscription(false);
+          setMdpInput("");
+        } else {
+          setErreurLogin(data?.erreur || "Impossible de créer le compte");
         }
       })
       .catch(() => setErreurLogin("Impossible de joindre le serveur"));
